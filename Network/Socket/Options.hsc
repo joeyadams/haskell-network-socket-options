@@ -69,6 +69,7 @@ import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (peek)
 import Network.Socket (Socket, SocketType(..), fdSocket)
+import Network.Socket.Internal (throwSocketErrorIfMinus1_)
 import System.Posix.Types (Fd(Fd))
 
 #ifdef __GLASGOW_HASKELL__
@@ -311,14 +312,3 @@ foreign import ccall
                         -> CInt     -- ^ l_onoff
                         -> CInt     -- ^ l_linger
                         -> IO CInt
-
-------------------------------------------------------------------------
--- Error handling
-
--- TODO: Use WSAGetLastError and FormatMessage on Windows, to avoid error
---       messages that say "no error".  The network package should do the same.
-throwSocketErrorIfMinus1_
-    :: String
-    -> IO CInt
-    -> IO ()
-throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
