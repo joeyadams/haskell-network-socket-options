@@ -6,6 +6,7 @@
 --
 -- Documentation is currently lacking.  For now, see @man 7 socket@ and
 -- @man 7 tcp@ of the Linux man-pages, or look up setsockopt in MSDN.
+{-# LANGUAGE ForeignFunctionInterface #-}
 module Network.Socket.Options
     (
     -- * Setting options
@@ -106,6 +107,7 @@ setTcpNoDelay :: Socket -> Bool -> IO ()
 setTcpNoDelay = setBool #{const IPPROTO_TCP} #{const TCP_NODELAY}
 
 ------------------------------------------------------------------------
+-- Higher-level wrappers
 
 type OptLevel = CInt
 type OptName = CInt
@@ -122,5 +124,38 @@ setTime = undefined
 setWith :: Storable b => (a -> b) -> OptLevel -> OptName -> Socket -> a -> IO ()
 setWith f level name sock = setStorable level name sock . f
 
+------------------------------------------------------------------------
+-- Foreign call wrappers
+
+#if mingw32_HOST_OS
+
+foreign import stdcall safe "winsock2.h setsockopt"
+    c_setsockopt
+        :: #{type SOCKET}   -- ^ SOCKET s
+        -> OptLevel         -- ^ int level
+        -> OptName          -- ^ int optname
+        -> Ptr CChar        -- ^ const char *optval
+        -> CInt             -- ^ int optlen
+        -> IO CInt
+
+#else
+
+foreign import ccall safe "setsockopt"
+    c_setsockopt
+        :: CInt                 -- ^ int sockfd
+        -> OptLevel             -- ^ int level
+        -> OptName              -- ^ int optname
+        -> Ptr a                -- ^ const void *optval
+        -> #{type socklen_t}    -- ^ socklen_t optlen
+        -> IO CInt
+
+#endif
+
 setStorable :: Storable a => OptLevel -> OptName -> Socket -> a -> IO ()
-setStorable = undefined
+setStorable level name sock x =
+    with x $ \ptr ->
+        throwSocketErrorIfMinus1_ "setsockopt" $
+            let s       = fromIntegral $ fdSocket sock
+                optval  = castPtr ptr
+                optlen  = fromIntegral $ sizeOf x
+             in c_setsockopt s level name optval optlen

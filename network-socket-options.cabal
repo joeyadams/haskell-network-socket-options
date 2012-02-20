@@ -33,5 +33,7 @@ library
 
     ghc-options: -Wall -fwarn-tabs
 
+    other-extensions: ForeignFunctionInterface
+
     build-depends: base == 4.*
                  , network
