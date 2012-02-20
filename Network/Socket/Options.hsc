@@ -32,6 +32,17 @@ module Network.Socket.Options
     Linger(..),
     ) where
 
+#if mingw32_HOST_OS
+#include <winsock2.h>
+#else
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#endif
+
+import Foreign
+import Foreign.C
 import Network.Socket
 
 data Linger
