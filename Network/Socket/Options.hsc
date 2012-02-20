@@ -50,7 +50,6 @@ module Network.Socket.Options
     -- * Types
     Seconds,
     Microseconds,
-    Linger(..),
     ) where
 
 #if mingw32_HOST_OS
@@ -93,13 +92,6 @@ instance HasSocket FD.FD where
 type Seconds        = Int
 type Microseconds   = Int64
 
-data Linger
-    = Linger
-        { l_onoff   :: !Bool
-        , l_linger  :: !Seconds
-        }
-    deriving (Eq, Show)
-
 {-
 It would be cute to have:
 
@@ -137,15 +129,16 @@ getError = getInt #{const SOL_SOCKET} #{const SO_ERROR}
 getKeepAlive :: HasSocket sock => sock -> IO Bool
 getKeepAlive = getBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
-getLinger :: HasSocket sock => sock -> IO Linger
+getLinger :: HasSocket sock => sock -> IO (Maybe Seconds)
 getLinger sock =
     alloca $ \l_onoff_ptr ->
     alloca $ \l_linger_ptr -> do
         throwSocketErrorIfMinus1_ "getsockopt" $
             c_getsockopt_linger (getSocket sock) l_onoff_ptr l_linger_ptr
-        onoff  <- (/= 0)       `fmap` peek l_onoff_ptr
-        linger <- fromIntegral `fmap` peek l_linger_ptr
-        return Linger{ l_onoff = onoff, l_linger = linger }
+        onoff <- peek l_onoff_ptr
+        if onoff /= 0
+            then (Just . fromIntegral) `fmap` peek l_linger_ptr
+            else return Nothing
 
 getOOBInline :: HasSocket sock => sock -> IO Bool
 getOOBInline = getBool #{const SOL_SOCKET} #{const SO_OOBINLINE}
@@ -207,12 +200,13 @@ setDontRoute = setBool #{const SOL_SOCKET} #{const SO_DONTROUTE}
 setKeepAlive :: HasSocket sock => sock -> Bool -> IO ()
 setKeepAlive = setBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
-setLinger :: HasSocket sock => sock -> Linger -> IO ()
-setLinger sock l =
+setLinger :: HasSocket sock => sock -> Maybe Seconds -> IO ()
+setLinger sock (Just linger) =
     throwSocketErrorIfMinus1_ "setsockopt" $
-        c_setsockopt_linger (getSocket sock)
-                            (fromIntegral $ fromEnum $ l_onoff l)
-                            (fromIntegral $ l_linger l)
+        c_setsockopt_linger (getSocket sock) 1 (fromIntegral linger)
+setLinger sock Nothing =
+    throwSocketErrorIfMinus1_ "setsockopt" $
+        c_setsockopt_linger (getSocket sock) 0 0
 
 setOOBInline :: HasSocket sock => sock -> Bool -> IO ()
 setOOBInline = setBool #{const SOL_SOCKET} #{const SO_OOBINLINE}

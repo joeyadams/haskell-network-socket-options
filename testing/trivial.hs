@@ -118,9 +118,9 @@ test_linger = runTest "SO_LINGER" $ do
     linger <- Opt.getLinger sock
     ok $ "Initial value: " ++ show linger
 
-    let v1 = Opt.Linger{ Opt.l_onoff = False, Opt.l_linger = 0 }
-        v2 = Opt.Linger{ Opt.l_onoff = True,  Opt.l_linger = 1 }
-        v3 = Opt.Linger{ Opt.l_onoff = True,  Opt.l_linger = 30000 }
+    let v1 = Nothing
+        v2 = Just 1
+        v3 = Just 30000
 
         setTo v = do
             Opt.setLinger sock v
