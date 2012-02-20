@@ -66,7 +66,7 @@ import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (peek)
-import Network.Socket (Socket, fdSocket)
+import Network.Socket (Socket, SocketType(..), fdSocket)
 
 type Seconds        = Int
 type Microseconds   = Int64
@@ -143,8 +143,28 @@ getSendTimeout :: Socket -> IO Microseconds
 getSendTimeout = getTime #{const SOL_SOCKET} #{const SO_SNDTIMEO}
 
 -- | This option is get-only.
-getType :: Socket -> IO Int
-getType = getInt #{const SOL_SOCKET} #{const SO_TYPE}
+getType :: Socket -> IO SocketType
+getType sock =
+    toSocketType `fmap` getCInt #{const SOL_SOCKET} #{const SO_TYPE} sock
+
+toSocketType :: CInt -> SocketType
+toSocketType t = case t of
+#ifdef SOCK_STREAM
+    #{const SOCK_STREAM} -> Stream
+#endif
+#ifdef SOCK_DGRAM
+    #{const SOCK_DGRAM} -> Datagram
+#endif
+#ifdef SOCK_RAW
+    #{const SOCK_RAW} -> Raw
+#endif
+#ifdef SOCK_RDM
+    #{const SOCK_RDM} -> RDM
+#endif
+#ifdef SOCK_SEQPACKET
+    #{const SOCK_SEQPACKET} -> SeqPacket
+#endif
+    _ -> error $ "Network.Socket.Options.getType: Unknown socket type #" ++ show t
 
 getTcpNoDelay :: Socket -> IO Bool
 getTcpNoDelay = getBool #{const IPPROTO_TCP} #{const TCP_NODELAY}
