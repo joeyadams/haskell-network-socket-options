@@ -29,6 +29,8 @@ library
     exposed-modules:
         Network.Socket.Options
 
+    c-sources: cbits/sockopt.c
+
     build-tools: hsc2hs
 
     ghc-options: -Wall -fwarn-tabs

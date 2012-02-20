@@ -7,6 +7,7 @@
 -- Documentation is currently lacking.  For now, see @man 7 socket@ and
 -- @man 7 tcp@ of the Linux man-pages, or look up setsockopt in MSDN.
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# OPTIONS -fno-warn-unused-imports #-}
 module Network.Socket.Options
     (
     -- * Setting options
@@ -34,8 +35,6 @@ module Network.Socket.Options
     Linger(..),
     ) where
 
-#let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
-
 #if mingw32_HOST_OS
 #include <winsock2.h>
 #else
@@ -55,11 +54,9 @@ type Microseconds   = Int64
 
 data Linger
     = Linger
-        { l_onoff   :: Bool
-        , l_linger  :: Seconds
+        { l_onoff   :: !Bool
+        , l_linger  :: !Seconds
         }
-
-instance Storable Linger
 
 {-
 It would be cute to have:
@@ -88,7 +85,9 @@ setKeepAlive :: Socket -> Bool -> IO ()
 setKeepAlive = setBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
 setLinger :: Socket -> Linger -> IO ()
-setLinger = setStorable #{const SOL_SOCKET} #{const SO_LINGER}
+setLinger sock l = c_setsockopt_linger (fdSocket sock)
+                                       (fromIntegral $ fromEnum $ l_onoff l)
+                                       (fromIntegral $ l_linger l)
 
 setOOBInline :: Socket -> Bool -> IO ()
 setOOBInline = setBool #{const SOL_SOCKET} #{const SO_OOBINLINE}
@@ -119,86 +118,32 @@ setTcpNoDelay :: Socket -> Bool -> IO ()
 setTcpNoDelay = setBool #{const IPPROTO_TCP} #{const TCP_NODELAY}
 
 ------------------------------------------------------------------------
--- Higher-level wrappers
+-- Wrappers
 
-type OptLevel = CInt
-type OptName = CInt
+type SockFd     = CInt
+type Level      = CInt
+type OptName    = CInt
 
-setBool :: OptLevel -> OptName -> Socket -> Bool -> IO ()
-setBool = setWith (fromIntegral . fromEnum :: Bool -> CInt)
+setBool :: Level -> OptName -> Socket -> Bool -> IO ()
+setBool level optname sock b =
+    c_setsockopt_int (fdSocket sock) level optname (fromIntegral $ fromEnum b)
 
-setInt :: OptLevel -> OptName -> Socket -> Int -> IO ()
-setInt = setWith (fromIntegral :: Int -> CInt)
+setInt :: Level -> OptName -> Socket -> Int -> IO ()
+setInt level optname sock n =
+    c_setsockopt_int (fdSocket sock) level optname (fromIntegral n)
 
-setTime :: OptLevel -> OptName -> Socket -> Microseconds -> IO ()
+setTime :: Level -> OptName -> Socket -> Microseconds -> IO ()
+setTime level optname sock usec =
+    c_setsockopt_time (fdSocket sock) level optname usec
 
-#if mingw32_HOST_OS
-setTime = setWith f
-    where f :: Microseconds -> #{type DWORD}
-          f us | us <= 0   = 0
-               | us <= 999 = 1
-               | otherwise = us `div` 1000
+foreign import ccall
+    c_setsockopt_int :: SockFd -> Level -> OptName -> CInt -> IO ()
 
-#else
-setTime = setWith f
-    where f :: Microseconds -> Timeval
-          f us | us <= 0   = Timeval 0
-               | otherwise = Timeval us
+foreign import ccall
+    c_setsockopt_time :: SockFd -> Level -> OptName -> Int64 -> IO ()
 
-data Timeval
-    = Timeval
-        { tv_sec    :: #{type }
-        , tv_usec   :: 
-        }
-
-newtype Timeval = Timeval Microseconds
-
-instance Storable Timeval where
-    sizeOf _ = #{size struct timeval}
-    alignment _ = #{alignment struct timeval}
-
-    poke ptr (Timeval us) = do
-        undefined
-
-type Foo = #{type typeof(struct foo {int x; int y;})}
-
-#endif
-
-setWith :: Storable b => (a -> b) -> OptLevel -> OptName -> Socket -> a -> IO ()
-setWith f level name sock = setStorable level name sock . f
-
-------------------------------------------------------------------------
--- Foreign call wrappers
-
-#if mingw32_HOST_OS
-
-foreign import stdcall safe "winsock2.h setsockopt"
-    c_setsockopt
-        :: #{type SOCKET}   -- ^ SOCKET s
-        -> OptLevel         -- ^ int level
-        -> OptName          -- ^ int optname
-        -> Ptr CChar        -- ^ const char *optval
-        -> CInt             -- ^ int optlen
-        -> IO CInt
-
-#else
-
-foreign import ccall safe "setsockopt"
-    c_setsockopt
-        :: CInt                 -- ^ int sockfd
-        -> OptLevel             -- ^ int level
-        -> OptName              -- ^ int optname
-        -> Ptr a                -- ^ const void *optval
-        -> #{type socklen_t}    -- ^ socklen_t optlen
-        -> IO CInt
-
-#endif
-
-setStorable :: Storable a => OptLevel -> OptName -> Socket -> a -> IO ()
-setStorable level name sock x =
-    with x $ \ptr ->
-        throwSocketErrorIfMinus1_ "setsockopt" $
-            let s       = fromIntegral $ fdSocket sock
-                optval  = castPtr ptr
-                optlen  = fromIntegral $ sizeOf x
-             in c_setsockopt s level name optval optlen
+foreign import ccall
+    c_setsockopt_linger :: SockFd
+                        -> CInt     -- ^ l_onoff
+                        -> CInt     -- ^ l_linger
+                        -> IO ()
