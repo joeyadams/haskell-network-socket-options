@@ -47,7 +47,7 @@ module Network.Socket.Options
 import Data.Int (Int64)
 import Foreign
 import Foreign.C
-import Network.Socket
+import Network.Socket hiding (throwSocketErrorIfMinus1_)
 
 type Seconds        = Int
 type Microseconds   = Int64
@@ -85,9 +85,11 @@ setKeepAlive :: Socket -> Bool -> IO ()
 setKeepAlive = setBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
 setLinger :: Socket -> Linger -> IO ()
-setLinger sock l = c_setsockopt_linger (fdSocket sock)
-                                       (fromIntegral $ fromEnum $ l_onoff l)
-                                       (fromIntegral $ l_linger l)
+setLinger sock l =
+    throwSocketErrorIfMinus1_ "setsockopt" $
+        c_setsockopt_linger (fdSocket sock)
+                            (fromIntegral $ fromEnum $ l_onoff l)
+                            (fromIntegral $ l_linger l)
 
 setOOBInline :: Socket -> Bool -> IO ()
 setOOBInline = setBool #{const SOL_SOCKET} #{const SO_OOBINLINE}
@@ -126,24 +128,38 @@ type OptName    = CInt
 
 setBool :: Level -> OptName -> Socket -> Bool -> IO ()
 setBool level optname sock b =
-    c_setsockopt_int (fdSocket sock) level optname (fromIntegral $ fromEnum b)
+    throwSocketErrorIfMinus1_ "setsockopt" $
+        c_setsockopt_int (fdSocket sock) level optname (fromIntegral $ fromEnum b)
 
 setInt :: Level -> OptName -> Socket -> Int -> IO ()
 setInt level optname sock n =
-    c_setsockopt_int (fdSocket sock) level optname (fromIntegral n)
+    throwSocketErrorIfMinus1_ "setsockopt" $
+        c_setsockopt_int (fdSocket sock) level optname (fromIntegral n)
 
 setTime :: Level -> OptName -> Socket -> Microseconds -> IO ()
 setTime level optname sock usec =
-    c_setsockopt_time (fdSocket sock) level optname usec
+    throwSocketErrorIfMinus1_ "setsockopt" $
+        c_setsockopt_time (fdSocket sock) level optname usec
 
 foreign import ccall
-    c_setsockopt_int :: SockFd -> Level -> OptName -> CInt -> IO ()
+    c_setsockopt_int :: SockFd -> Level -> OptName -> CInt -> IO CInt
 
 foreign import ccall
-    c_setsockopt_time :: SockFd -> Level -> OptName -> Int64 -> IO ()
+    c_setsockopt_time :: SockFd -> Level -> OptName -> Int64 -> IO CInt
 
 foreign import ccall
     c_setsockopt_linger :: SockFd
                         -> CInt     -- ^ l_onoff
                         -> CInt     -- ^ l_linger
-                        -> IO ()
+                        -> IO CInt
+
+------------------------------------------------------------------------
+-- Error handling
+
+-- TODO: Use WSAGetLastError and FormatMessage on Windows, to avoid error
+--       messages that say "no error".  The network package should do the same.
+throwSocketErrorIfMinus1_
+    :: String
+    -> IO CInt
+    -> IO ()
+throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
