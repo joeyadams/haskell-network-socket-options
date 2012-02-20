@@ -7,25 +7,49 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+typedef socklen_t my_socklen_t;
+
 #else
 
 #include <winsock2.h>
 
+typedef int my_socklen_t;
+
 #endif
+
 
 int c_getsockopt_int(int sockfd, int level, int optname, int *opt_out)
 {
-#if unix
-    socklen_t optlen = sizeof(*opt_out);
-#else
-    int optlen = sizeof(*opt_out);
-#endif
+    my_socklen_t optlen = sizeof(*opt_out);
     return getsockopt(sockfd, level, optname, (void *) opt_out, &optlen);
 }
 
 int c_setsockopt_int(int sockfd, int level, int optname, int optval)
 {
     return setsockopt(sockfd, level, optname, (const void *) &optval, sizeof(optval));
+}
+
+int c_getsockopt_time(int sockfd, int level, int optname, int64_t *usec_out)
+{
+#if unix
+    struct timeval tv;
+    my_socklen_t optlen = sizeof(tv);
+    int rc = getsockopt(sockfd, level, optname, (void *) &tv, &optlen);
+
+    if (rc != -1)
+        *usec_out = (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+
+    return rc;
+#else
+    DWORD msec;
+    my_socklen_t optlen = sizeof(msec);
+    int rc = getsockopt(sockfd, level, optname, (void *) &msec, &optlen);
+
+    if (rc != -1)
+        *usec_out = (int64_t)msec * 1000;
+
+    return rc;
+#endif
 }
 
 int c_setsockopt_time(int sockfd, int level, int optname, int64_t usec)
@@ -57,6 +81,20 @@ int c_setsockopt_time(int sockfd, int level, int optname, int64_t usec)
 
     return setsockopt(sockfd, level, optname, (const void *) &msec, sizeof(msec));
 #endif
+}
+
+int c_getsockopt_linger(int sockfd, int *l_onoff, int *l_linger)
+{
+    struct linger linger;
+    my_socklen_t optlen = sizeof(linger);
+    int rc = getsockopt(sockfd, SOL_SOCKET, SO_LINGER, (void *) &linger, &optlen);
+
+    if (rc != -1) {
+        *l_onoff  = linger.l_onoff;
+        *l_linger = linger.l_linger;
+    }
+
+    return rc;
 }
 
 int c_setsockopt_linger(int sockfd, int l_onoff, int l_linger)

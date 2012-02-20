@@ -46,7 +46,7 @@ module Network.Socket.Options
 import Data.Int (Int64)
 import Foreign
 import Foreign.C
-import Network.Socket hiding (throwSocketErrorIfMinus1_)
+import Network.Socket hiding (Linger, throwSocketErrorIfMinus1_)
 
 type Seconds        = Int
 type Microseconds   = Int64
@@ -77,6 +77,16 @@ that support get but not set or vice versa (e.g. SO_ACCEPTCONN and SO_TYPE).
 -- | This option only supports get, not set.
 getAcceptConn :: Socket -> IO Bool
 getAcceptConn = getBool #{const SOL_SOCKET} #{const SO_ACCEPTCONN}
+
+getLinger :: Socket -> IO Linger
+getLinger sock =
+    alloca $ \l_onoff_ptr ->
+    alloca $ \l_linger_ptr -> do
+        throwSocketErrorIfMinus1_ "getsockopt" $
+            c_getsockopt_linger (fdSocket sock) l_onoff_ptr l_linger_ptr
+        onoff  <- (/= 0)       `fmap` peek l_onoff_ptr
+        linger <- fromIntegral `fmap` peek l_linger_ptr
+        return Linger{ l_onoff = onoff, l_linger = linger }
 
 ------------------------------------------------------------------------
 -- Setting options
@@ -157,19 +167,35 @@ setInt level optname sock n =
     throwSocketErrorIfMinus1_ "setsockopt" $
         c_setsockopt_int (fdSocket sock) level optname (fromIntegral n)
 
+getTime :: Level -> OptName -> Socket -> IO Microseconds
+getTime level optname sock =
+    alloca $ \ptr -> do
+        throwSocketErrorIfMinus1_ "getsockopt" $
+            c_getsockopt_time (fdSocket sock) level optname ptr
+        peek ptr
+
 setTime :: Level -> OptName -> Socket -> Microseconds -> IO ()
 setTime level optname sock usec =
     throwSocketErrorIfMinus1_ "setsockopt" $
         c_setsockopt_time (fdSocket sock) level optname usec
 
 foreign import ccall
-    c_setsockopt_int :: SockFd -> Level -> OptName -> CInt -> IO CInt
-
-foreign import ccall
     c_getsockopt_int :: SockFd -> Level -> OptName -> Ptr CInt -> IO CInt
 
 foreign import ccall
+    c_setsockopt_int :: SockFd -> Level -> OptName -> CInt -> IO CInt
+
+foreign import ccall
+    c_getsockopt_time :: SockFd -> Level -> OptName -> Ptr Int64 -> IO CInt
+
+foreign import ccall
     c_setsockopt_time :: SockFd -> Level -> OptName -> Int64 -> IO CInt
+
+foreign import ccall
+    c_getsockopt_linger :: SockFd
+                        -> Ptr CInt -- ^ l_onoff
+                        -> Ptr CInt -- ^ l_linger
+                        -> IO CInt
 
 foreign import ccall
     c_setsockopt_linger :: SockFd
