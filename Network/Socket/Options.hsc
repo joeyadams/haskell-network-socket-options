@@ -97,6 +97,7 @@ data Linger
         { l_onoff   :: !Bool
         , l_linger  :: !Seconds
         }
+    deriving (Eq, Show)
 
 {-
 It would be cute to have:
