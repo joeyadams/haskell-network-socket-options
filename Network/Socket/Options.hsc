@@ -10,6 +10,8 @@
 {-# OPTIONS -fno-warn-unused-imports #-}
 module Network.Socket.Options
     (
+    HasSocket(..),
+
     -- * Getting options
     getAcceptConn,
     getBroadcast,
@@ -67,6 +69,25 @@ import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (peek)
 import Network.Socket (Socket, SocketType(..), fdSocket)
+import System.Posix.Types (Fd(Fd))
+
+#ifdef __GLASGOW_HASKELL__
+import qualified GHC.IO.FD as FD
+#endif
+
+class HasSocket a where
+    getSocket :: a -> CInt
+
+instance HasSocket Fd where
+    getSocket (Fd n) = n
+
+instance HasSocket Socket where
+    getSocket = fdSocket
+
+#ifdef __GLASGOW_HASKELL__
+instance HasSocket FD.FD where
+    getSocket = FD.fdFD
+#endif
 
 type Seconds        = Int
 type Microseconds   = Int64
