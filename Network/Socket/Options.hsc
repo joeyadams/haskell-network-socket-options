@@ -30,8 +30,11 @@ module Network.Socket.Options
 
     -- * Types
     Seconds,
+    Microseconds,
     Linger(..),
     ) where
+
+#let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
 
 #if mingw32_HOST_OS
 #include <winsock2.h>
@@ -42,17 +45,19 @@ module Network.Socket.Options
 #include <sys/types.h>
 #endif
 
+import Data.Int (Int64)
 import Foreign
 import Foreign.C
 import Network.Socket
+
+type Seconds        = Int
+type Microseconds   = Int64
 
 data Linger
     = Linger
         { l_onoff   :: Bool
         , l_linger  :: Seconds
         }
-
-type Seconds = Int
 
 instance Storable Linger
 
@@ -91,7 +96,14 @@ setOOBInline = setBool #{const SOL_SOCKET} #{const SO_OOBINLINE}
 setRecvBuf :: Socket -> Int -> IO ()
 setRecvBuf = setInt #{const SOL_SOCKET} #{const SO_RCVBUF}
 
-setRecvTimeout :: Socket -> Seconds -> IO ()
+-- | Note the following about timeout values:
+--
+--  * A value of 0 or less means the operation will never time out
+--
+--  * On Windows, the timeout is truncated to milliseconds, 32-bit.  However,
+--    if the number of microseconds is from 1 to 999, it will be rounded up to
+--    one millisecond, to prevent it from being treated as "never time out".
+setRecvTimeout :: Socket -> Microseconds -> IO ()
 setRecvTimeout = setTime #{const SOL_SOCKET} #{const SO_RCVTIMEO}
 
 setReuseAddr :: Socket -> Bool -> IO ()
@@ -100,7 +112,7 @@ setReuseAddr = setBool #{const SOL_SOCKET} #{const SO_REUSEADDR}
 setSendBuf :: Socket -> Int -> IO ()
 setSendBuf = setInt #{const SOL_SOCKET} #{const SO_SNDBUF}
 
-setSendTimeout :: Socket -> Seconds -> IO ()
+setSendTimeout :: Socket -> Microseconds -> IO ()
 setSendTimeout = setTime #{const SOL_SOCKET} #{const SO_SNDTIMEO}
 
 setTcpNoDelay :: Socket -> Bool -> IO ()
@@ -118,8 +130,39 @@ setBool = setWith (fromIntegral . fromEnum :: Bool -> CInt)
 setInt :: OptLevel -> OptName -> Socket -> Int -> IO ()
 setInt = setWith (fromIntegral :: Int -> CInt)
 
-setTime :: OptLevel -> OptName -> Socket -> Seconds -> IO ()
-setTime = undefined
+setTime :: OptLevel -> OptName -> Socket -> Microseconds -> IO ()
+
+#if mingw32_HOST_OS
+setTime = setWith f
+    where f :: Microseconds -> #{type DWORD}
+          f us | us <= 0   = 0
+               | us <= 999 = 1
+               | otherwise = us `div` 1000
+
+#else
+setTime = setWith f
+    where f :: Microseconds -> Timeval
+          f us | us <= 0   = Timeval 0
+               | otherwise = Timeval us
+
+data Timeval
+    = Timeval
+        { tv_sec    :: #{type }
+        , tv_usec   :: 
+        }
+
+newtype Timeval = Timeval Microseconds
+
+instance Storable Timeval where
+    sizeOf _ = #{size struct timeval}
+    alignment _ = #{alignment struct timeval}
+
+    poke ptr (Timeval us) = do
+        undefined
+
+type Foo = #{type typeof(struct foo {int x; int y;})}
+
+#endif
 
 setWith :: Storable b => (a -> b) -> OptLevel -> OptName -> Socket -> a -> IO ()
 setWith f level name sock = setStorable level name sock . f
