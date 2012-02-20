@@ -135,12 +135,12 @@ getError = getInt #{const SOL_SOCKET} #{const SO_ERROR}
 getKeepAlive :: Socket -> IO Bool
 getKeepAlive = getBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
-getLinger :: Socket -> IO Linger
+getLinger :: HasSocket sock => sock -> IO Linger
 getLinger sock =
     alloca $ \l_onoff_ptr ->
     alloca $ \l_linger_ptr -> do
         throwSocketErrorIfMinus1_ "getsockopt" $
-            c_getsockopt_linger (fdSocket sock) l_onoff_ptr l_linger_ptr
+            c_getsockopt_linger (getSocket sock) l_onoff_ptr l_linger_ptr
         onoff  <- (/= 0)       `fmap` peek l_onoff_ptr
         linger <- fromIntegral `fmap` peek l_linger_ptr
         return Linger{ l_onoff = onoff, l_linger = linger }
@@ -205,10 +205,10 @@ setDontRoute = setBool #{const SOL_SOCKET} #{const SO_DONTROUTE}
 setKeepAlive :: Socket -> Bool -> IO ()
 setKeepAlive = setBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
-setLinger :: Socket -> Linger -> IO ()
+setLinger :: HasSocket sock => sock -> Linger -> IO ()
 setLinger sock l =
     throwSocketErrorIfMinus1_ "setsockopt" $
-        c_setsockopt_linger (fdSocket sock)
+        c_setsockopt_linger (getSocket sock)
                             (fromIntegral $ fromEnum $ l_onoff l)
                             (fromIntegral $ l_linger l)
 
@@ -263,29 +263,29 @@ setInt :: Level -> OptName -> Socket -> Int -> IO ()
 setInt level optname sock n =
     setCInt level optname sock (fromIntegral n)
 
-getCInt :: Level -> OptName -> Socket -> IO CInt
+getCInt :: HasSocket sock => Level -> OptName -> sock -> IO CInt
 getCInt level optname sock =
     alloca $ \ptr -> do
         throwSocketErrorIfMinus1_ "getsockopt" $
-            c_getsockopt_int (fdSocket sock) level optname ptr
+            c_getsockopt_int (getSocket sock) level optname ptr
         peek ptr
 
-setCInt :: Level -> OptName -> Socket -> CInt -> IO ()
+setCInt :: HasSocket sock => Level -> OptName -> sock -> CInt -> IO ()
 setCInt level optname sock n =
     throwSocketErrorIfMinus1_ "setsockopt" $
-        c_setsockopt_int (fdSocket sock) level optname n
+        c_setsockopt_int (getSocket sock) level optname n
 
-getTime :: Level -> OptName -> Socket -> IO Microseconds
+getTime :: HasSocket sock => Level -> OptName -> sock -> IO Microseconds
 getTime level optname sock =
     alloca $ \ptr -> do
         throwSocketErrorIfMinus1_ "getsockopt" $
-            c_getsockopt_time (fdSocket sock) level optname ptr
+            c_getsockopt_time (getSocket sock) level optname ptr
         peek ptr
 
-setTime :: Level -> OptName -> Socket -> Microseconds -> IO ()
+setTime :: HasSocket sock => Level -> OptName -> sock -> Microseconds -> IO ()
 setTime level optname sock usec =
     throwSocketErrorIfMinus1_ "setsockopt" $
-        c_setsockopt_time (fdSocket sock) level optname usec
+        c_setsockopt_time (getSocket sock) level optname usec
 
 foreign import ccall
     c_getsockopt_int :: SockFd -> Level -> OptName -> Ptr CInt -> IO CInt
