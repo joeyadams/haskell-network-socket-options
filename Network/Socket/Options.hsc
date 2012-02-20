@@ -11,6 +11,23 @@
 module Network.Socket.Options
     (
     -- * Getting options
+    getAcceptConn,
+    getBroadcast,
+    getDebug,
+    getDontRoute,
+    getError,
+    getKeepAlive,
+    getLinger,
+    getOOBInline,
+    getRecvBuf,
+    getRecvTimeout,
+    getReuseAddr,
+    getSendBuf,
+    getSendTimeout,
+    getType,
+
+    -- ** TCP
+    getTcpNoDelay,
 
     -- * Setting options
     setBroadcast,
@@ -74,9 +91,25 @@ that support get but not set or vice versa (e.g. SO_ACCEPTCONN and SO_TYPE).
 ------------------------------------------------------------------------
 -- Getting options
 
--- | This option only supports get, not set.
+-- | This option is get-only.
 getAcceptConn :: Socket -> IO Bool
 getAcceptConn = getBool #{const SOL_SOCKET} #{const SO_ACCEPTCONN}
+
+getBroadcast :: Socket -> IO Bool
+getBroadcast = getBool #{const SOL_SOCKET} #{const SO_BROADCAST}
+
+getDebug :: Socket -> IO Bool
+getDebug = getBool #{const SOL_SOCKET} #{const SO_DEBUG}
+
+getDontRoute :: Socket -> IO Bool
+getDontRoute = getBool #{const SOL_SOCKET} #{const SO_DONTROUTE}
+
+-- | This option is get-only.
+getError :: Socket -> IO Int
+getError = getInt #{const SOL_SOCKET} #{const SO_ERROR}
+
+getKeepAlive :: Socket -> IO Bool
+getKeepAlive = getBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
 getLinger :: Socket -> IO Linger
 getLinger sock =
@@ -87,6 +120,31 @@ getLinger sock =
         onoff  <- (/= 0)       `fmap` peek l_onoff_ptr
         linger <- fromIntegral `fmap` peek l_linger_ptr
         return Linger{ l_onoff = onoff, l_linger = linger }
+
+getOOBInline :: Socket -> IO Bool
+getOOBInline = getBool #{const SOL_SOCKET} #{const SO_OOBINLINE}
+
+getRecvBuf :: Socket -> IO Int
+getRecvBuf = getInt #{const SOL_SOCKET} #{const SO_RCVBUF}
+
+getRecvTimeout :: Socket -> IO Microseconds
+getRecvTimeout = getTime #{const SOL_SOCKET} #{const SO_RCVTIMEO}
+
+getReuseAddr :: Socket -> IO Bool
+getReuseAddr = getBool #{const SOL_SOCKET} #{const SO_REUSEADDR}
+
+getSendBuf :: Socket -> IO Int
+getSendBuf = getInt #{const SOL_SOCKET} #{const SO_SNDBUF}
+
+getSendTimeout :: Socket -> IO Microseconds
+getSendTimeout = getTime #{const SOL_SOCKET} #{const SO_SNDTIMEO}
+
+-- | This option is get-only.
+getType :: Socket -> IO Int
+getType = getInt #{const SOL_SOCKET} #{const SO_TYPE}
+
+getTcpNoDelay :: Socket -> IO Bool
+getTcpNoDelay = getBool #{const IPPROTO_TCP} #{const TCP_NODELAY}
 
 ------------------------------------------------------------------------
 -- Setting options
