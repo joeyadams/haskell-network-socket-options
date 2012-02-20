@@ -13,6 +13,16 @@
 
 #endif
 
+int c_getsockopt_int(int sockfd, int level, int optname, int *opt_out)
+{
+#if unix
+    socklen_t optlen = sizeof(*opt_out);
+#else
+    int optlen = sizeof(*opt_out);
+#endif
+    return getsockopt(sockfd, level, optname, (void *) opt_out, &optlen);
+}
+
 int c_setsockopt_int(int sockfd, int level, int optname, int optval)
 {
     return setsockopt(sockfd, level, optname, (const void *) &optval, sizeof(optval));

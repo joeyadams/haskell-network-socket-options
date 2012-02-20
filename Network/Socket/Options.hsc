@@ -10,6 +10,8 @@
 {-# OPTIONS -fno-warn-unused-imports #-}
 module Network.Socket.Options
     (
+    -- * Getting options
+
     -- * Setting options
     setBroadcast,
     setDebug,
@@ -25,9 +27,6 @@ module Network.Socket.Options
 
     -- ** TCP
     setTcpNoDelay,
-
-    -- * Getting options
-
 
     -- * Types
     Seconds,
@@ -71,6 +70,16 @@ so we can say:
 However, that's probably less convenient to use, and it bars socket options
 that support get but not set or vice versa (e.g. SO_ACCEPTCONN and SO_TYPE).
 -}
+
+------------------------------------------------------------------------
+-- Getting options
+
+-- | This option only supports get, not set.
+getAcceptConn :: Socket -> IO Bool
+getAcceptConn = getBool #{const SOL_SOCKET} #{const SO_ACCEPTCONN}
+
+------------------------------------------------------------------------
+-- Setting options
 
 setBroadcast :: Socket -> Bool -> IO ()
 setBroadcast = setBool #{const SOL_SOCKET} #{const SO_BROADCAST}
@@ -126,10 +135,22 @@ type SockFd     = CInt
 type Level      = CInt
 type OptName    = CInt
 
+getBool :: Level -> OptName -> Socket -> IO Bool
+getBool level optname sock =
+    (/= 0) `fmap` getInt level optname sock
+
 setBool :: Level -> OptName -> Socket -> Bool -> IO ()
 setBool level optname sock b =
     throwSocketErrorIfMinus1_ "setsockopt" $
         c_setsockopt_int (fdSocket sock) level optname (fromIntegral $ fromEnum b)
+
+getInt :: Level -> OptName -> Socket -> IO Int
+getInt level optname sock =
+    alloca $ \ptr -> do
+        throwSocketErrorIfMinus1_ "getsockopt" $
+            c_getsockopt_int (fdSocket sock) level optname ptr
+        n <- peek ptr
+        return $ fromIntegral n
 
 setInt :: Level -> OptName -> Socket -> Int -> IO ()
 setInt level optname sock n =
@@ -143,6 +164,9 @@ setTime level optname sock usec =
 
 foreign import ccall
     c_setsockopt_int :: SockFd -> Level -> OptName -> CInt -> IO CInt
+
+foreign import ccall
+    c_getsockopt_int :: SockFd -> Level -> OptName -> Ptr CInt -> IO CInt
 
 foreign import ccall
     c_setsockopt_time :: SockFd -> Level -> OptName -> Int64 -> IO CInt
