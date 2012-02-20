@@ -61,9 +61,12 @@ module Network.Socket.Options
 #endif
 
 import Data.Int (Int64)
-import Foreign
-import Foreign.C
-import Network.Socket hiding (Linger, throwSocketErrorIfMinus1_)
+import Foreign.C.Error (throwErrnoIfMinus1_)
+import Foreign.C.Types
+import Foreign.Marshal.Alloc (alloca)
+import Foreign.Ptr (Ptr)
+import Foreign.Storable (peek)
+import Network.Socket (Socket, fdSocket)
 
 type Seconds        = Int
 type Microseconds   = Int64
