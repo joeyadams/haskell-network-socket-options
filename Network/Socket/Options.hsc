@@ -116,23 +116,23 @@ that support get but not set or vice versa (e.g. SO_ACCEPTCONN and SO_TYPE).
 -- Getting options
 
 -- | This option is get-only.
-getAcceptConn :: Socket -> IO Bool
+getAcceptConn :: HasSocket sock => sock -> IO Bool
 getAcceptConn = getBool #{const SOL_SOCKET} #{const SO_ACCEPTCONN}
 
-getBroadcast :: Socket -> IO Bool
+getBroadcast :: HasSocket sock => sock -> IO Bool
 getBroadcast = getBool #{const SOL_SOCKET} #{const SO_BROADCAST}
 
-getDebug :: Socket -> IO Bool
+getDebug :: HasSocket sock => sock -> IO Bool
 getDebug = getBool #{const SOL_SOCKET} #{const SO_DEBUG}
 
-getDontRoute :: Socket -> IO Bool
+getDontRoute :: HasSocket sock => sock -> IO Bool
 getDontRoute = getBool #{const SOL_SOCKET} #{const SO_DONTROUTE}
 
 -- | This option is get-only.
-getError :: Socket -> IO Int
+getError :: HasSocket sock => sock -> IO Int
 getError = getInt #{const SOL_SOCKET} #{const SO_ERROR}
 
-getKeepAlive :: Socket -> IO Bool
+getKeepAlive :: HasSocket sock => sock -> IO Bool
 getKeepAlive = getBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
 getLinger :: HasSocket sock => sock -> IO Linger
@@ -145,26 +145,26 @@ getLinger sock =
         linger <- fromIntegral `fmap` peek l_linger_ptr
         return Linger{ l_onoff = onoff, l_linger = linger }
 
-getOOBInline :: Socket -> IO Bool
+getOOBInline :: HasSocket sock => sock -> IO Bool
 getOOBInline = getBool #{const SOL_SOCKET} #{const SO_OOBINLINE}
 
-getRecvBuf :: Socket -> IO Int
+getRecvBuf :: HasSocket sock => sock -> IO Int
 getRecvBuf = getInt #{const SOL_SOCKET} #{const SO_RCVBUF}
 
-getRecvTimeout :: Socket -> IO Microseconds
+getRecvTimeout :: HasSocket sock => sock -> IO Microseconds
 getRecvTimeout = getTime #{const SOL_SOCKET} #{const SO_RCVTIMEO}
 
-getReuseAddr :: Socket -> IO Bool
+getReuseAddr :: HasSocket sock => sock -> IO Bool
 getReuseAddr = getBool #{const SOL_SOCKET} #{const SO_REUSEADDR}
 
-getSendBuf :: Socket -> IO Int
+getSendBuf :: HasSocket sock => sock -> IO Int
 getSendBuf = getInt #{const SOL_SOCKET} #{const SO_SNDBUF}
 
-getSendTimeout :: Socket -> IO Microseconds
+getSendTimeout :: HasSocket sock => sock -> IO Microseconds
 getSendTimeout = getTime #{const SOL_SOCKET} #{const SO_SNDTIMEO}
 
 -- | This option is get-only.
-getType :: Socket -> IO SocketType
+getType :: HasSocket sock => sock -> IO SocketType
 getType sock =
     toSocketType `fmap` getCInt #{const SOL_SOCKET} #{const SO_TYPE} sock
 
@@ -187,22 +187,22 @@ toSocketType t = case t of
 #endif
     _ -> error $ "Network.Socket.Options.getType: Unknown socket type #" ++ show t
 
-getTcpNoDelay :: Socket -> IO Bool
+getTcpNoDelay :: HasSocket sock => sock -> IO Bool
 getTcpNoDelay = getBool #{const IPPROTO_TCP} #{const TCP_NODELAY}
 
 ------------------------------------------------------------------------
 -- Setting options
 
-setBroadcast :: Socket -> Bool -> IO ()
+setBroadcast :: HasSocket sock => sock -> Bool -> IO ()
 setBroadcast = setBool #{const SOL_SOCKET} #{const SO_BROADCAST}
 
-setDebug :: Socket -> Bool -> IO ()
+setDebug :: HasSocket sock => sock -> Bool -> IO ()
 setDebug = setBool #{const SOL_SOCKET} #{const SO_DEBUG}
 
-setDontRoute :: Socket -> Bool -> IO ()
+setDontRoute :: HasSocket sock => sock -> Bool -> IO ()
 setDontRoute = setBool #{const SOL_SOCKET} #{const SO_DONTROUTE}
 
-setKeepAlive :: Socket -> Bool -> IO ()
+setKeepAlive :: HasSocket sock => sock -> Bool -> IO ()
 setKeepAlive = setBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
 setLinger :: HasSocket sock => sock -> Linger -> IO ()
@@ -212,10 +212,10 @@ setLinger sock l =
                             (fromIntegral $ fromEnum $ l_onoff l)
                             (fromIntegral $ l_linger l)
 
-setOOBInline :: Socket -> Bool -> IO ()
+setOOBInline :: HasSocket sock => sock -> Bool -> IO ()
 setOOBInline = setBool #{const SOL_SOCKET} #{const SO_OOBINLINE}
 
-setRecvBuf :: Socket -> Int -> IO ()
+setRecvBuf :: HasSocket sock => sock -> Int -> IO ()
 setRecvBuf = setInt #{const SOL_SOCKET} #{const SO_RCVBUF}
 
 -- | Note the following about timeout values:
@@ -225,19 +225,19 @@ setRecvBuf = setInt #{const SOL_SOCKET} #{const SO_RCVBUF}
 --  * On Windows, the timeout is truncated to milliseconds, 32-bit.  However,
 --    if the number of microseconds is from 1 to 999, it will be rounded up to
 --    one millisecond, to prevent it from being treated as "never time out".
-setRecvTimeout :: Socket -> Microseconds -> IO ()
+setRecvTimeout :: HasSocket sock => sock -> Microseconds -> IO ()
 setRecvTimeout = setTime #{const SOL_SOCKET} #{const SO_RCVTIMEO}
 
-setReuseAddr :: Socket -> Bool -> IO ()
+setReuseAddr :: HasSocket sock => sock -> Bool -> IO ()
 setReuseAddr = setBool #{const SOL_SOCKET} #{const SO_REUSEADDR}
 
-setSendBuf :: Socket -> Int -> IO ()
+setSendBuf :: HasSocket sock => sock -> Int -> IO ()
 setSendBuf = setInt #{const SOL_SOCKET} #{const SO_SNDBUF}
 
-setSendTimeout :: Socket -> Microseconds -> IO ()
+setSendTimeout :: HasSocket sock => sock -> Microseconds -> IO ()
 setSendTimeout = setTime #{const SOL_SOCKET} #{const SO_SNDTIMEO}
 
-setTcpNoDelay :: Socket -> Bool -> IO ()
+setTcpNoDelay :: HasSocket sock => sock -> Bool -> IO ()
 setTcpNoDelay = setBool #{const IPPROTO_TCP} #{const TCP_NODELAY}
 
 ------------------------------------------------------------------------
@@ -247,19 +247,19 @@ type SockFd     = CInt
 type Level      = CInt
 type OptName    = CInt
 
-getBool :: Level -> OptName -> Socket -> IO Bool
+getBool :: HasSocket sock => Level -> OptName -> sock -> IO Bool
 getBool level optname sock =
     (/= 0) `fmap` getCInt level optname sock
 
-setBool :: Level -> OptName -> Socket -> Bool -> IO ()
+setBool :: HasSocket sock => Level -> OptName -> sock -> Bool -> IO ()
 setBool level optname sock b =
     setCInt level optname sock (fromIntegral $ fromEnum b)
 
-getInt :: Level -> OptName -> Socket -> IO Int
+getInt :: HasSocket sock => Level -> OptName -> sock -> IO Int
 getInt level optname sock =
     fromIntegral `fmap` getCInt level optname sock
 
-setInt :: Level -> OptName -> Socket -> Int -> IO ()
+setInt :: HasSocket sock => Level -> OptName -> sock -> Int -> IO ()
 setInt level optname sock n =
     setCInt level optname sock (fromIntegral n)
 
