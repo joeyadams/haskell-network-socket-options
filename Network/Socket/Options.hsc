@@ -208,25 +208,31 @@ type OptName    = CInt
 
 getBool :: Level -> OptName -> Socket -> IO Bool
 getBool level optname sock =
-    (/= 0) `fmap` getInt level optname sock
+    (/= 0) `fmap` getCInt level optname sock
 
 setBool :: Level -> OptName -> Socket -> Bool -> IO ()
 setBool level optname sock b =
-    throwSocketErrorIfMinus1_ "setsockopt" $
-        c_setsockopt_int (fdSocket sock) level optname (fromIntegral $ fromEnum b)
+    setCInt level optname sock (fromIntegral $ fromEnum b)
 
 getInt :: Level -> OptName -> Socket -> IO Int
 getInt level optname sock =
-    alloca $ \ptr -> do
-        throwSocketErrorIfMinus1_ "getsockopt" $
-            c_getsockopt_int (fdSocket sock) level optname ptr
-        n <- peek ptr
-        return $ fromIntegral n
+    fromIntegral `fmap` getCInt level optname sock
 
 setInt :: Level -> OptName -> Socket -> Int -> IO ()
 setInt level optname sock n =
+    setCInt level optname sock (fromIntegral n)
+
+getCInt :: Level -> OptName -> Socket -> IO CInt
+getCInt level optname sock =
+    alloca $ \ptr -> do
+        throwSocketErrorIfMinus1_ "getsockopt" $
+            c_getsockopt_int (fdSocket sock) level optname ptr
+        peek ptr
+
+setCInt :: Level -> OptName -> Socket -> CInt -> IO ()
+setCInt level optname sock n =
     throwSocketErrorIfMinus1_ "setsockopt" $
-        c_setsockopt_int (fdSocket sock) level optname (fromIntegral n)
+        c_setsockopt_int (fdSocket sock) level optname n
 
 getTime :: Level -> OptName -> Socket -> IO Microseconds
 getTime level optname sock =
