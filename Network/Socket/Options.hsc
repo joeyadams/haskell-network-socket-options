@@ -1,3 +1,11 @@
+-- |
+-- Module:       Network.Socket.Options
+-- Copyright:    (c) Joseph Adams 2012
+-- License:      BSD3
+-- Maintainer:   joeyadams3.14159@gmail.com
+--
+-- Documentation is currently lacking.  For now, see @man 7 socket@ and
+-- @man 7 tcp@ of the Linux man-pages, or look up setsockopt in MSDN.
 module Network.Socket.Options
     (
     -- * Setting options
