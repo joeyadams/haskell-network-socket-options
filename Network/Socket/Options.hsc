@@ -200,6 +200,9 @@ setDontRoute = setBool #{const SOL_SOCKET} #{const SO_DONTROUTE}
 setKeepAlive :: HasSocket sock => sock -> Bool -> IO ()
 setKeepAlive = setBool #{const SOL_SOCKET} #{const SO_KEEPALIVE}
 
+-- | On Windows, the 'Seconds' value is truncated to 16 bits.  This means if a
+-- linger time of more than 65535 seconds (about 18.2 hours) is given, it will
+-- wrap around.
 setLinger :: HasSocket sock => sock -> Maybe Seconds -> IO ()
 setLinger sock (Just linger) =
     throwSocketErrorIfMinus1_ "setsockopt" $
