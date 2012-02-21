@@ -50,9 +50,11 @@ module Network.Socket.Options
     Seconds,
     Microseconds,
 
+    -- * Setting socket timeouts
+    -- $timeouts
+    setSocketTimeouts,
 #ifdef __GLASGOW_HASKELL__
-    -- * Utilities
-    setHandleTimeouts
+    setHandleTimeouts,
 #endif
     ) where
 
@@ -325,17 +327,37 @@ foreign import ccall
 ------------------------------------------------------------------------
 -- Utilities
 
+{- $timeouts
+Set socket timeouts to prevent a send or recv from hanging indefinitely.
+
+This is only necessary and effective on Windows.
+/It is a no-op on other systems./
+
+For more information, see:
+
+ * <http://trac.haskell.org/network/ticket/2>
+
+ * <http://trac.haskell.org/network/ticket/31#comment:1>
+-}
+
+setSocketTimeouts
+    :: Socket
+    -> Microseconds -- ^ Receive timeout
+    -> Microseconds -- ^ Send timeout
+    -> IO ()
+#if mingw32_HOST_OS
+setSocketTimeouts sock recv_usec send_usec = do
+    setRecvTimeout sock recv_usec
+    setSendTimeout sock send_usec
+#else
+setSocketTimeouts _ _ _ = return ()
+#endif
+
+
 #ifdef __GLASGOW_HASKELL__
 
--- | Set socket timeouts for a handle returned by 'Network.connectTo' or
--- 'Network.accept', to prevent a send or recv from hanging indefinitely.
--- For more information, see:
---
---  * http://trac.haskell.org/network/ticket/2
---
---  * http://trac.haskell.org/network/ticket/31#comment:1
---
--- This is only necessary for Windows; it is a no-op on other systems.
+-- | Set timeouts for a socket that has already been wrapped in a 'Handle' by
+-- 'Network.connectTo' or 'Network.accept'.
 setHandleTimeouts
     :: Handle
     -> Microseconds -- ^ Receive timeout
@@ -350,7 +372,6 @@ setHandleTimeouts h recv_usec send_usec =
                 setSendTimeout fd send_usec
             _ -> return ()
 #else
--- Unnecessary for Linux, where non-blocking IO is used under the hood.
 setHandleTimeouts _ _ _ = return ()
 #endif
 
