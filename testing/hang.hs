@@ -5,6 +5,7 @@ import Control.Concurrent
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Reader
 import Network
+import Network.Socket.Options (setHandleTimeouts)
 import System.IO
 
 class MonadFork m where
@@ -40,6 +41,8 @@ client n = withLogContext "client" $
            withLogContext (show n) $ do
     log "Connecting to localhost:1234"
     h <- liftIO $ connectTo "localhost" $ PortNumber 1234
+    liftIO $ setHandleTimeouts h 2000000 2000000
+
     log "Connected.  Getting first line"
     line1 <- liftIO $ hGetLine h
     log $ "First line: " ++ line1
