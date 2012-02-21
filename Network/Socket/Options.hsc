@@ -1,3 +1,4 @@
+------------------------------------------------------------------------
 -- |
 -- Module:       Network.Socket.Options
 -- Copyright:    (c) Joseph Adams 2012
@@ -9,8 +10,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 module Network.Socket.Options
     (
-    HasSocket(..),
-
     -- * Getting options
     getAcceptConn,
     getBroadcast,
@@ -47,6 +46,7 @@ module Network.Socket.Options
     setTcpNoDelay,
 
     -- * Types
+    HasSocket(..),
     Seconds,
     Microseconds,
     ) where
@@ -73,6 +73,8 @@ import System.Posix.Types (Fd(Fd))
 import qualified GHC.IO.FD as FD
 #endif
 
+-- | The getters and setters in this module can be used not only on 'Socket's,
+-- but on raw 'Fd's (file descriptors) as well.
 class HasSocket a where
     getSocket :: a -> CInt
 
