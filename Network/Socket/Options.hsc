@@ -49,6 +49,11 @@ module Network.Socket.Options
     HasSocket(..),
     Seconds,
     Microseconds,
+
+#ifdef __GLASGOW_HASKELL__
+    -- * Utilities
+    setHandleTimeouts
+#endif
     ) where
 
 #if mingw32_HOST_OS
@@ -71,6 +76,13 @@ import System.Posix.Types (Fd(Fd))
 
 #ifdef __GLASGOW_HASKELL__
 import qualified GHC.IO.FD as FD
+import System.IO (Handle)
+
+#if mingw32_HOST_OS
+import Data.Typeable (cast)
+import GHC.IO.Handle.Internals (withHandle_)
+import GHC.IO.Handle.Types (Handle__(haDevice))
+#endif
 #endif
 
 -- | The getters and setters in this module can be used not only on 'Socket's,
@@ -309,3 +321,37 @@ foreign import ccall
                         -> CInt     -- ^ l_onoff
                         -> CInt     -- ^ l_linger
                         -> IO CInt
+
+------------------------------------------------------------------------
+-- Utilities
+
+#ifdef __GLASGOW_HASKELL__
+
+-- | Set socket timeouts for a handle returned by 'Network.connectTo' or
+-- 'Network.accept', to prevent a send or recv from hanging indefinitely.
+-- For more information, see:
+--
+--  * http://trac.haskell.org/network/ticket/2
+--
+--  * http://trac.haskell.org/network/ticket/31#comment:1
+--
+-- This is only necessary for Windows; it is a no-op on other systems.
+setHandleTimeouts
+    :: Handle
+    -> Microseconds -- ^ Receive timeout
+    -> Microseconds -- ^ Send timeout
+    -> IO ()
+#if mingw32_HOST_OS
+setHandleTimeouts h recv_usec send_usec =
+    withHandle_ "setHandleTimeouts" h $ \Handle__{haDevice = dev} ->
+        case cast dev of
+            Just fd | FD.fdIsSocket_ fd /= 0 -> do
+                setRecvTimeout fd recv_usec
+                setSendTimeout fd send_usec
+            _ -> return ()
+#else
+-- Unnecessary for Linux, where non-blocking IO is used under the hood.
+setHandleTimeouts _ _ _ = return ()
+#endif
+
+#endif
