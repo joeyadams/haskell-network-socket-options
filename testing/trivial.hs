@@ -3,7 +3,7 @@
 -- setsockopt.
 --
 -- TODO: Add test for getError
-
+{-# LANGUAGE CPP #-}
 import qualified Network.Socket.Options as Opt
 
 import Prelude hiding (catch, last)
@@ -47,8 +47,11 @@ test_getAcceptConn = runTest "getAcceptConn" $ do
     expect (a3 == True) "getAcceptConn returns True after listen is called"
 
 testBool :: String -> Getter Bool -> Setter Bool -> IO ()
-testBool name get set = runTest name $ do
-    sock <- socket AF_INET Stream defaultProtocol
+testBool = testBoolWithSocketType Stream
+
+testBoolWithSocketType :: SocketType -> String -> Getter Bool -> Setter Bool -> IO ()
+testBoolWithSocketType type_ name get set = runTest name $ do
+    sock <- socket AF_INET type_ defaultProtocol
 
     v1 <- get sock
     ok $ "Initial value: " ++ show v1
@@ -99,12 +102,23 @@ testMicroseconds name get set = runTest name $ do
                             ("actually got " ++ show actual)
 
     mapM_ setTo
+#if mingw32_HOST_OS
         [ (0,0)
+        , (1, 1000)
         , (10000, 10000)
+        , (12345, 12000)
         , (4000000000000, 4000000000000)
-        , (1, 1)
         , (0,0)
         ]
+#else
+        [ (0,0)
+        , (1,10000)
+        , (50000, 50000)
+        , (1234567, 1240000)
+        , (4000000000000, 4000000000000)
+        , (0,0)
+        ]
+#endif
 
 test_linger :: IO ()
 test_linger = runTest "SO_LINGER" $ do
@@ -154,7 +168,8 @@ main = do
     test_getType
     test_getAcceptConn
 
-    testBool "SO_BROADCAST" Opt.getBroadcast    Opt.setBroadcast
+    testBoolWithSocketType Datagram
+             "SO_BROADCAST" Opt.getBroadcast    Opt.setBroadcast
     testBool "SO_DEBUG"     Opt.getDebug        Opt.setDebug
     testBool "SO_DONTROUTE" Opt.getDontRoute    Opt.setDontRoute
     testBool "SO_KEEPALIVE" Opt.getKeepAlive    Opt.setKeepAlive
