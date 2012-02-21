@@ -12,6 +12,9 @@ import Control.Exception
 import Control.Monad
 import Network.Socket
 
+type Getter a = Socket -> IO a
+type Setter a = Socket -> a -> IO ()
+
 test_getType :: IO ()
 test_getType = runTest "getType" $ do
     f AF_INET Stream    0
@@ -43,11 +46,7 @@ test_getAcceptConn = runTest "getAcceptConn" $ do
     a3 <- Opt.getAcceptConn sock
     expect (a3 == True) "getAcceptConn returns True after listen is called"
 
-testBool
-    :: String                       -- ^ Option name
-    -> (Socket -> IO Bool)          -- ^ Getter
-    -> (Socket -> Bool -> IO ())    -- ^ Setter
-    -> IO ()
+testBool :: String -> Getter Bool -> Setter Bool -> IO ()
 testBool name get set = runTest name $ do
     sock <- socket AF_INET Stream defaultProtocol
 
@@ -62,11 +61,7 @@ testBool name get set = runTest name $ do
     v3 <- get sock
     expect (v3 == v1) "setsockopt changed result of getsockopt again"
 
-testInt
-    :: String                       -- ^ Option name
-    -> (Socket -> IO Int)           -- ^ Getter
-    -> (Socket -> Int -> IO ())     -- ^ Setter
-    -> IO ()
+testInt :: String -> Getter Int -> Setter Int -> IO ()
 testInt name get set = runTest name $ do
     sock <- socket AF_INET Stream defaultProtocol
 
@@ -85,9 +80,9 @@ testInt name get set = runTest name $ do
     return ()
 
 testMicroseconds
-    :: String                                -- ^ Option name
-    -> (Socket -> IO Opt.Microseconds)       -- ^ Getter
-    -> (Socket -> Opt.Microseconds -> IO ()) -- ^ Setter
+    :: String
+    -> Getter Opt.Microseconds
+    -> Setter Opt.Microseconds
     -> IO ()
 testMicroseconds name get set = runTest name $ do
     sock <- socket AF_INET Stream defaultProtocol
