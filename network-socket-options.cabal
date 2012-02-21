@@ -3,10 +3,10 @@ version:             0.1
 synopsis:            Type-safe, portable alternative to getSocketOption/setSocketOption
 description:
     The network package provides getSocketOption and setSocketOption functions.
-    These work fine for most options, since most socket options can be
-    represented as integers (namely, all boolean options, and a few quantity
-    options).  However, it doesn't work for @SO_LINGER@, @SO_RCVTIMEO@, and
-    @SO_SNDTIMEO@, as these use different, platform-specific representations.
+    These work fine for socket options represented using the @int@ type
+    (namely, all boolean options, and a few quantity options).  However, it
+    doesn't work for, say, @SO_LINGER@, @SO_RCVTIMEO@, and @SO_SNDTIMEO@, as
+    these use different, platform-specific representations.
     .
     This package implements the getters and setters as separate functions.  At
     the moment, it only provides socket options that are available for both

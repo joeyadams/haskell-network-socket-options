@@ -7,7 +7,6 @@
 -- Documentation is currently lacking.  For now, see @man 7 socket@ and
 -- @man 7 tcp@ of the Linux man-pages, or look up setsockopt in MSDN.
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# OPTIONS -fno-warn-unused-imports #-}
 module Network.Socket.Options
     (
     HasSocket(..),
@@ -62,7 +61,6 @@ module Network.Socket.Options
 #endif
 
 import Data.Int (Int64)
-import Foreign.C.Error (throwErrnoIfMinus1_)
 import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr)
@@ -220,7 +218,7 @@ setRecvBuf = setInt #{const SOL_SOCKET} #{const SO_RCVBUF}
 --
 --  * On Windows, the timeout is truncated to milliseconds, 32-bit.  However,
 --    if the number of microseconds is from 1 to 999, it will be rounded up to
---    one millisecond, to prevent it from being treated as "never time out".
+--    one millisecond, to prevent it from being treated as \"never time out\".
 setRecvTimeout :: HasSocket sock => sock -> Microseconds -> IO ()
 setRecvTimeout = setTime #{const SOL_SOCKET} #{const SO_RCVTIMEO}
 
