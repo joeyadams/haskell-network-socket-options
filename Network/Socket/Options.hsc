@@ -341,7 +341,8 @@ For more information, see:
 -}
 
 setSocketTimeouts
-    :: Socket
+    :: HasSocket sock
+    => sock
     -> Microseconds -- ^ Receive timeout
     -> Microseconds -- ^ Send timeout
     -> IO ()
