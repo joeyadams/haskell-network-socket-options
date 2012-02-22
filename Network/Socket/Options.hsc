@@ -325,7 +325,7 @@ foreign import ccall
                         -> IO CInt
 
 ------------------------------------------------------------------------
--- Utilities
+-- Setting socket timeouts
 
 {- $timeouts
 
