@@ -1,5 +1,5 @@
 name:                network-socket-options
-version:             0.1
+version:             0.2
 synopsis:            Type-safe, portable alternative to getSocketOption/setSocketOption
 description:
     The network package provides getSocketOption and setSocketOption functions.
@@ -11,6 +11,9 @@ description:
     This package implements the getters and setters as separate functions.  At
     the moment, it only provides socket options that are available for both
     Unix and Windows.
+    .
+    This package also provides a workaround needed to time out network
+    operations in Windows without leaking resources.
 homepage:            https://github.com/joeyadams/haskell-network-socket-options
 license:             BSD3
 license-file:        LICENSE
