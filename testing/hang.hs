@@ -1,3 +1,8 @@
+{-
+When running this on Windows, watch the Handles and Threads counters in
+Windows Task Manager.  These are hidden by default, but can be displayed if you
+go to View -> Select Columns.
+-}
 import Prelude hiding (log)
 import Log
 
