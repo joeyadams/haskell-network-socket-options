@@ -328,18 +328,57 @@ foreign import ccall
 -- Utilities
 
 {- $timeouts
-Set socket timeouts to prevent a send or recv from hanging indefinitely.
 
-This is only necessary and effective on Windows.
-/It is a no-op on other systems./
+The following functions are provided to work around a problem with network IO
+on Windows.  They are no-ops on other systems.  Use them /in addition to/, not
+/instead of/, asynchronous exceptions (e.g. "System.Timeout") to time out
+network operations.
 
-For more information, see:
+The problem is that GHC currently does not have proper IO manager support for
+Windows.  On Unix, GHC uses non-blocking IO and @select@\/@epoll@\/@kqueue@ for
+efficient multiplexing.  On Windows, it uses blocking FFI (foreign function
+interface) calls.  An FFI call blocks the OS thread it is called from, and
+cannot be interrupted by an asynchronous exception.  This means that if a send
+or receive operation hangs indefinitely, the thread hangs indefinitely, and
+cannot be killed.  Thus, the following timeout will not work on Windows, in a
+program compiled with @-threaded@:
 
- * <http://trac.haskell.org/network/ticket/2>
+@
+'System.Timeout.timeout' 120000000 $ 'Network.Socket.recv' sock len
+@
 
- * <http://trac.haskell.org/network/ticket/31#comment:1>
+In a program compiled without @-threaded@, the timeout will work, but it will
+leak an OS thread until data arrives on the socket.
+
+We can work around the problem by performing the IO in another thread:
+
+>wrappedRecv :: Socket -> Int -> IO String
+>wrappedRecv sock len = do
+>    mv <- newEmptyMVar
+>    bracket (forkIO $ recv sock len >>= putMVar mv)
+>            (forkIO . killThread)
+>               -- Call 'killThread' in a forked thread, as it will block until
+>               -- the exception has been delivered to the target thread.
+>            (\_ -> takeMVar mv)
+
+This will behave correctly, but it will leak an OS thread if
+'Network.Socket.recv' hangs indefinitely.  If about 1000 OS threads are hung on
+'Network.Socket.recv' calls, the program will run out of address space and
+crash (assuming 32-bit Windows, with default settings).
+
+Socket timeouts can be used to work around the problem.  In a program compiled
+for Windows with @-threaded@, when a receive or send operation times out, it
+will fail with an exception, and will not leak an OS thread.  Without
+@-threaded@, it will leak an OS thread, unfortunately.
+
+Socket timeouts have no effect on 'Network.Socket.connect', which does seem to
+time out on its own at some point.  They also have no effect for
+'System.IO.hWaitForInput' when an explicit timeout is given.
+
 -}
 
+-- | On Windows, set the socket's @SO_RCVTIMEO@ and @SO_SNDTIMEO@ values to the
+-- ones given.  On other platforms, do nothing.
 setSocketTimeouts
     :: HasSocket sock
     => sock
@@ -357,8 +396,9 @@ setSocketTimeouts _ _ _ = return ()
 
 ##ifdef __GLASGOW_HASKELL__
 
--- | Set timeouts for a socket that has already been wrapped in a 'Handle' by
--- 'Network.connectTo' or 'Network.accept'.
+-- | On Windows, set timeouts for a socket that has already been wrapped in a
+-- 'Handle' by 'Network.connectTo' or 'Network.accept'.  On other platforms, do
+-- nothing.
 setHandleTimeouts
     :: Handle
     -> Microseconds -- ^ Receive timeout
