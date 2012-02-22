@@ -7,7 +7,7 @@
 --
 -- Documentation is currently lacking.  For now, see @man 7 socket@ and
 -- @man 7 tcp@ of the Linux man-pages, or look up setsockopt in MSDN.
-{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface #-}
 module Network.Socket.Options
     (
     -- * Getting options
@@ -53,9 +53,9 @@ module Network.Socket.Options
     -- * Setting socket timeouts
     -- $timeouts
     setSocketTimeouts,
-#ifdef __GLASGOW_HASKELL__
+##ifdef __GLASGOW_HASKELL__
     setHandleTimeouts,
-#endif
+##endif
     ) where
 
 #if mingw32_HOST_OS
@@ -76,16 +76,16 @@ import Network.Socket (Socket, SocketType(..), fdSocket)
 import Network.Socket.Internal (throwSocketErrorIfMinus1_)
 import System.Posix.Types (Fd(Fd))
 
-#ifdef __GLASGOW_HASKELL__
+##ifdef __GLASGOW_HASKELL__
 import qualified GHC.IO.FD as FD
 import System.IO (Handle)
 
-#if mingw32_HOST_OS
+##if mingw32_HOST_OS
 import Data.Typeable (cast)
 import GHC.IO.Handle.Internals (withHandle_)
 import GHC.IO.Handle.Types (Handle__(Handle__, haDevice))
-#endif
-#endif
+##endif
+##endif
 
 -- | The getters and setters in this module can be used not only on 'Socket's,
 -- but on raw 'Fd's (file descriptors) as well.
@@ -98,10 +98,10 @@ instance HasSocket Fd where
 instance HasSocket Socket where
     getSocket = fdSocket
 
-#ifdef __GLASGOW_HASKELL__
+##ifdef __GLASGOW_HASKELL__
 instance HasSocket FD.FD where
     getSocket = FD.fdFD
-#endif
+##endif
 
 type Seconds        = Int
 type Microseconds   = Int64
@@ -345,16 +345,16 @@ setSocketTimeouts
     -> Microseconds -- ^ Receive timeout
     -> Microseconds -- ^ Send timeout
     -> IO ()
-#if mingw32_HOST_OS
+##if mingw32_HOST_OS
 setSocketTimeouts sock recv_usec send_usec = do
     setRecvTimeout sock recv_usec
     setSendTimeout sock send_usec
-#else
+##else
 setSocketTimeouts _ _ _ = return ()
-#endif
+##endif
 
 
-#ifdef __GLASGOW_HASKELL__
+##ifdef __GLASGOW_HASKELL__
 
 -- | Set timeouts for a socket that has already been wrapped in a 'Handle' by
 -- 'Network.connectTo' or 'Network.accept'.
@@ -363,7 +363,7 @@ setHandleTimeouts
     -> Microseconds -- ^ Receive timeout
     -> Microseconds -- ^ Send timeout
     -> IO ()
-#if mingw32_HOST_OS
+##if mingw32_HOST_OS
 setHandleTimeouts h recv_usec send_usec =
     withHandle_ "setHandleTimeouts" h $ \Handle__{haDevice = dev} ->
         case cast dev of
@@ -371,8 +371,8 @@ setHandleTimeouts h recv_usec send_usec =
                 setRecvTimeout fd recv_usec
                 setSendTimeout fd send_usec
             _ -> return ()
-#else
+##else
 setHandleTimeouts _ _ _ = return ()
-#endif
+##endif
 
-#endif
+##endif
