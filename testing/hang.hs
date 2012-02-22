@@ -46,7 +46,7 @@ client n = withLogContext "client" $
            withLogContext (show n) $ do
     log "Connecting to localhost:1234"
     h <- liftIO $ connectTo "localhost" $ PortNumber 1234
-    liftIO $ setHandleTimeouts h 2000000 2000000
+    liftIO $ setHandleTimeouts h 1000000 1000000
 
     log "Connected.  Getting first line"
     line1 <- liftIO $ hGetLine h
@@ -57,7 +57,7 @@ client n = withLogContext "client" $
         line2 <- liftIO $ hGetLine h
         log $ "Second line: " ++ line2
 
-    liftIO $ threadDelay 1000000
+    liftIO $ threadDelay 2000000
     log "Killing receiving thread"
     liftIO $ killThread recv_tid
     log "Done killing"
