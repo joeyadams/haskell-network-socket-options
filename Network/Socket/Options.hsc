@@ -83,7 +83,7 @@ import System.IO (Handle)
 #if mingw32_HOST_OS
 import Data.Typeable (cast)
 import GHC.IO.Handle.Internals (withHandle_)
-import GHC.IO.Handle.Types (Handle__(haDevice))
+import GHC.IO.Handle.Types (Handle__(Handle__, haDevice))
 #endif
 #endif
 
