@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
 
 typedef socklen_t my_socklen_t;
@@ -17,9 +18,6 @@ typedef int my_socklen_t;
 
 #endif
 
-#if __APPLE__
-#include <sys/time.h>
-#endif
 
 int c_getsockopt_int(int sockfd, int level, int optname, int *opt_out)
 {
