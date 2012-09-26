@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#if unix
+#if unix || __APPLE__
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -17,6 +17,9 @@ typedef int my_socklen_t;
 
 #endif
 
+#if __APPLE__
+#include <sys/time.h>
+#endif
 
 int c_getsockopt_int(int sockfd, int level, int optname, int *opt_out)
 {
@@ -31,7 +34,7 @@ int c_setsockopt_int(int sockfd, int level, int optname, int optval)
 
 int c_getsockopt_time(int sockfd, int level, int optname, int64_t *usec_out)
 {
-#if unix
+#if unix || __APPLE__
     struct timeval tv;
     my_socklen_t optlen = sizeof(tv);
     int rc = getsockopt(sockfd, level, optname, (void *) &tv, &optlen);
@@ -54,7 +57,7 @@ int c_getsockopt_time(int sockfd, int level, int optname, int64_t *usec_out)
 
 int c_setsockopt_time(int sockfd, int level, int optname, int64_t usec)
 {
-#if unix
+#if unix || __APPLE__
     struct timeval tv;
 
     if (usec <= 0) {
