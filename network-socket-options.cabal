@@ -1,5 +1,5 @@
 name:                network-socket-options
-version:             0.2
+version:             0.2.0.1
 synopsis:            Type-safe, portable alternative to getSocketOption/setSocketOption
 description:
     The network package provides getSocketOption and setSocketOption functions.
