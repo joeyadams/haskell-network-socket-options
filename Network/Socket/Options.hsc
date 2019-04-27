@@ -104,9 +104,13 @@ instance HasSocket Socket where
 ##if MIN_VERSION_network(3,1,0)
     withFdSocket_ = withFdSocket
 ##else
+##if MIN_VERSION_network(3,0,0)
     withFdSocket_ sock action = do
         fd <- fdSocket sock
         action fd
+##else
+    withFdSocket_ sock action = action (fdSocket sock)
+##endif
 ##endif
 
 ##ifdef __GLASGOW_HASKELL__
